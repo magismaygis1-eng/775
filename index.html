@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>محول الإحداثيات - وزارة الأشغال العامة والإسكان</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.12.1/proj4.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --primary-green: #2d5016;
+    --dark-green: #1a3009;
+    --light-green: #4a6741;
+    --gold: #c9a961;
+    --dark-gold: #a08040;
+    --red: #c41e3a;
+    --white: #ffffff;
+    --cream: #f5f1e8;
+    --light-gray: #e8e4d9;
+    --text-dark: #2c2c2c;
+    --border-color: #8b7355;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Cairo', 'Amiri', serif;
+    background: var(--cream);
+    color: var(--text-dark);
+    min-height: 100vh;
+    background-image: 
+      linear-gradient(rgba(245, 241, 232, 0.97), rgba(245, 241, 232, 0.97)),
+      repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(201, 169, 97, 0.05) 35px, rgba(201, 169, 97, 0.05) 70px);
+  }
+
+  .header {
+    background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
+    color: var(--white);
+    padding: 20px 30px;
+    border-bottom: 4px solid var(--gold);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  }
+
+  .header-content {
+    max-width: 1200px;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .logo-container {
+    width: 90px;
+    height: 90px;
+    background: var(--white);
+    border-radius: 50%;
+    padding: 5px;
+    border: 3px solid var(--gold);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .header-text {
+    flex: 1;
+  }
+
+  .header-text h1 {
+    font-family: 'Amiri', serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 5px;
+    color: var(--gold);
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .header-text h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 3px;
+    color: var(--white);
+  }
+
+  .header-text .subtitle {
+    font-size: 14px;
+    opacity: 0.9;
+    color: var(--light-gray);
+  }
+
+  .flag-bar {
+    height: 6px;
+    background: linear-gradient(90deg, 
+      var(--red) 0%, var(--red) 25%, 
+      var(--white) 25%, var(--white) 50%, 
+      var(--dark-green) 50%, var(--dark-green) 75%, 
+      #000 75%, #000 100%);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 20px;
+  }
+
+  .info-banner {
+    background: var(--white);
+    border-right: 5px solid var(--gold);
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    border: 1px solid var(--light-gray);
+  }
+
+  .info-banner strong {
+    color: var(--primary-green);
+    font-size: 16px;
+  }
+
+  .info-banner ul {
+    list-style: none;
+    margin-top: 8px;
+    padding-right: 20px;
+  }
+
+  .info-banner li {
+    padding: 3px 0;
+    font-size: 14px;
+    color: var(--text-dark);
+  }
+
+  .info-banner li::before {
+    content: "◆ ";
+    color: var(--gold);
+    font-weight: bold;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 0;
+    background: var(--light-gray);
+    padding: 10px 10px 0;
+    border-radius: 10px 10px 0 0;
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    padding: 12px 24px;
+    background: var(--light-gray);
+    border: none;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-dark);
+    font-family: 'Cairo', sans-serif;
+    transition: all 0.3s;
+    border: 1px solid transparent;
+    border-bottom: none;
+  }
+
+  .tab:hover {
+    background: var(--cream);
+  }
+
+  .tab.active {
+    background: var(--white);
+    color: var(--primary-green);
+    border-color: var(--border-color);
+    position: relative;
+    top: 1px;
+  }
+
+  .tab-content {
+    display: none;
+    background: var(--white);
+    padding: 25px;
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  }
+
+  .tab-content.active { display: block; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .card {
+    background: linear-gradient(135deg, var(--cream) 0%, var(--white) 100%);
+    border-radius: 10px;
+    padding: 20px;
+    border: 2px solid var(--gold);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-green), var(--gold));
+  }
+
+  .card h3 {
+    margin: 0 0 15px 0;
+    font-size: 17px;
+    color: var(--primary-green);
+    border-bottom: 2px solid var(--gold);
+    padding-bottom: 10px;
+    font-weight: 700;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 5px;
+    color: var(--text-dark);
+    font-weight: 600;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--text-dark);
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    direction: ltr;
+    text-align: left;
+    transition: border-color 0.3s;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.1);
+  }
+
+  textarea { min-height: 150px; resize: vertical; }
+
+  .buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 20px 0;
+  }
+
+  button {
+    padding: 11px 22px;
+    border: none;
+    border-radius: 6px;
+    background: var(--primary-green);
+    color: var(--white);
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: 'Cairo', sans-serif;
+    transition: all 0.3s;
+    border: 2px solid var(--primary-green);
+  }
+
+  button:hover {
+    background: var(--dark-green);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(45, 80, 22, 0.3);
+  }
+
+  button.secondary {
+    background: var(--white);
+    color: var(--primary-green);
+    border-color: var(--primary-green);
+  }
+
+  button.secondary:hover {
+    background: var(--primary-green);
+    color: var(--white);
+  }
+
+  button.danger {
+    background: var(--red);
+    border-color: var(--red);
+  }
+
+  button.danger:hover {
+    background: #a01830;
+  }
+
+  button.success {
+    background: var(--gold);
+    color: var(--text-dark);
+    border-color: var(--dark-gold);
+  }
+
+  button.success:hover {
+    background: var(--dark-gold);
+    color: var(--white);
+  }
+
+  .name-field {
+    margin: 15px 0;
+    padding: 15px;
+    background: var(--cream);
+    border-radius: 8px;
+    border: 1px dashed var(--gold);
+  }
+
+  .name-field input {
+    direction: rtl;
+    text-align: right;
+    font-family: 'Cairo', sans-serif;
+  }
+
+  #map {
+    height: 500px;
+    width: 100%;
+    border-radius: 10px;
+    margin-top: 20px;
+    border: 2px solid var(--gold);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+
+  .points-section {
+    margin-top: 20px;
+    background: var(--white);
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  }
+
+  .points-section h3 {
+    margin-top: 0;
+    color: var(--primary-green);
+    border-bottom: 2px solid var(--gold);
+    padding-bottom: 10px;
+  }
+
+  .points-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 15px;
+    direction: ltr;
+    text-align: center;
+  }
+
+  .points-table th, .points-table td {
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    font-family: 'Consolas', monospace;
+  }
+
+  .points-table th {
+    background: var(--primary-green);
+    color: var(--white);
+    font-weight: 700;
+  }
+
+  .points-table tr:nth-child(even) { background: var(--cream); }
+  .points-table tr:hover { background: var(--light-gray); }
+
+  .del-btn {
+    background: var(--red);
+    color: var(--white);
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+  }
+
+  .table-wrapper { max-height: 350px; overflow-y: auto; }
+
+  .copy-btn {
+    background: var(--gold);
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    margin-right: 5px;
+    color: var(--text-dark);
+    font-weight: bold;
+  }
+
+  .copy-btn:hover { background: var(--dark-gold); color: var(--white); }
+
+  .export-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+  }
+
+  .export-card {
+    background: linear-gradient(135deg, var(--cream), var(--white));
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid var(--gold);
+  }
+
+  .export-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    border-color: var(--primary-green);
+  }
+
+  .export-card h4 {
+    margin: 0 0 8px 0;
+    color: var(--primary-green);
+    font-size: 16px;
+  }
+
+  .export-card p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-dark);
+    opacity: 0.8;
+  }
+
+  .batch-result {
+    margin-top: 20px;
+    background: var(--cream);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid var(--gold);
+  }
+
+  .batch-result h3 {
+    margin-top: 0;
+    color: var(--primary-green);
+  }
+
+  .dms-converter {
+    background: var(--cream);
+    padding: 20px;
+    border-radius: 8px;
+    margin: 15px 0;
+    border: 1px solid var(--gold);
+  }
+
+  .dms-converter h4 {
+    color: var(--primary-green);
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--gold);
+    padding-bottom: 8px;
+  }
+
+  .dms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 10px;
+  }
+
+  .dms-input-group {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+
+  .dms-input-group input {
+    width: 80px;
+    margin: 0;
+  }
+
+  .dms-input-group select {
+    width: 60px;
+    margin: 0;
+  }
+
+  #dms_result, #decimal_result {
+    margin-top: 15px;
+    padding: 15px;
+    background: var(--white);
+    border-radius: 5px;
+    direction: ltr;
+    text-align: left;
+    border: 1px solid var(--gold);
+    font-family: 'Consolas', monospace;
+    white-space: pre-wrap;
+  }
+
+  .leaflet-popup-content {
+    direction: ltr;
+    text-align: left;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+  }
+
+  #status {
+    text-align: center;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+
+  .error { color: var(--red); background: rgba(196, 30, 58, 0.1); }
+  .success { color: var(--primary-green); background: rgba(45, 80, 22, 0.1); }
+
+  .footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 30px;
+    color: var(--text-dark);
+    opacity: 0.7;
+    font-size: 13px;
+    border-top: 2px solid var(--gold);
+  }
+
+  @media (max-width: 768px) {
+    .header-content { flex-direction: column; text-align: center; }
+    .header-text h1 { font-size: 22px; }
+    .tabs { flex-direction: column; }
+    .tab { border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 5px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-content">
+    <div class="logo-container">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Coat_of_arms_of_Palestine.svg/200px-Coat_of_arms_of_Palestine.svg.png" alt="شعار دولة فلسطين" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%23fff%22 stroke=%22%23c9a961%22 stroke-width=%223%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 font-size=%2214%22 fill=%22%232d5016%22 font-family=%22Arial%22>فلسطين</text></svg>'">
+    </div>
+    <div class="header-text">
+      <h1>وزارة الأشغال العامة والإسكان</h1>
+      <h2>دولة فلسطين - Palestinian National Authority</h2>
+      <div class="subtitle">نظام تحويل الإحداثيات المساحية | Coordinate Conversion System</div>
+    </div>
+  </div>
+</div>
+<div class="flag-bar"></div>
+
+<div class="container">
+  <div class="info-banner">
+    <strong>📐 الأنظمة المساحية المعتمدة:</strong>
+    <ul>
+      <li><b>WGS84:</b> النظام العالمي (GPS) - 8 أرقام عشرية</li>
+      <li><b>Israeli Grid:</b> الشبكة الإسرائيلية (Cassini + offset)</li>
+      <li><b>Palestine 1923 Grid:</b> الشبكة الفلسطينية (EPSG:28191 - Cassini)</li>
+    </ul>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('single')">🔄 تحويل فردي</button>
+    <button class="tab" onclick="switchTab('batch')"> تحويل دفعات</button>
+    <button class="tab" onclick="switchTab('dms')">📏 DMS ↔ Decimal</button>
+    <button class="tab" onclick="switchTab('export')">📤 تصدير التقارير</button>
+  </div>
+
+  <!-- تحويل فردي -->
+  <div id="tab-single" class="tab-content active">
+    <div class="grid">
+      <div class="card">
+        <h3>🌐 WGS84 (GPS)</h3>
+        <label>Longitude <button class="copy-btn" onclick="copyField('wgs_lon')">📋</button></label>
+        <input type="text" inputmode="decimal" id="wgs_lon" placeholder="34.43689000">
+        <label>Latitude <button class="copy-btn" onclick="copyField('wgs_lat')">📋</button></label>
+        <input type="text" inputmode="decimal" id="wgs_lat" placeholder="31.51079400">
+      </div>
+
+      <div class="card">
+        <h3>🇮🇱 Israeli Grid</h3>
+        <label>X (Easting) <button class="copy-btn" onclick="copyField('isr_x')">📋</button></label>
+        <input type="text" inputmode="decimal" id="isr_x" placeholder="146544.230">
+        <label>Y (Northing) <button class="copy-btn" onclick="copyField('isr_y')">📋</button></label>
+        <input type="text" inputmode="decimal" id="isr_y" placeholder="602329.049">
+      </div>
+
+      <div class="card">
+        <h3>🇵🇸 Palestine 1923 Grid</h3>
+        <label>X (Easting) <button class="copy-btn" onclick="copyField('pal_x')">📋</button></label>
+        <input type="text" inputmode="decimal" id="pal_x" placeholder="96545.974">
+        <label>Y (Northing) <button class="copy-btn" onclick="copyField('pal_y')"></button></label>
+        <input type="text" inputmode="decimal" id="pal_y" placeholder="102329.346">
+      </div>
+    </div>
+
+    <div class="name-field">
+      <label>📝 اسم النقطة / Point Name</label>
+      <input type="text" id="point_name" placeholder="أدخل اسم النقطة...">
+    </div>
+
+    <div class="buttons">
+      <button onclick="convertFrom('wgs')">من WGS84 ➜</button>
+      <button onclick="convertFrom('isr')">من Israeli ➜</button>
+      <button onclick="convertFrom('pal')">من Palestine ➜</button>
+      <button class="secondary" onclick="clearAll()">🗑️ مسح</button>
+      <button class="secondary" onclick="loadExample()">📍 مثال</button>
+      <button class="success" onclick="addCurrentPoint()">➕ إضافة للقائمة</button>
+    </div>
+  </div>
+
+  <!-- تحويل دفعات -->
+  <div id="tab-batch" class="tab-content">
+    <div class="card">
+      <h3>📥 إدخال قائمة الإحداثيات</h3>
+      <label>النظام المصدر:</label>
+      <select id="batch_source">
+        <option value="wgs">WGS84 (Lon, Lat)</option>
+        <option value="isr">Israeli Grid (X, Y)</option>
+        <option value="pal">Palestine Grid (X, Y)</option>
+      </select>
+      
+      <label>الصق الإحداثيات (كل سطر نقطة - فاصلة أو مسافة):</label>
+      <textarea id="batch_input" placeholder="34.43689000,31.51079400&#10;34.43819400,31.50210200&#10;34.43381000,31.52331800"></textarea>
+      
+      <div class="buttons">
+        <button onclick="batchConvert()">🔄 تحويل الكل</button>
+        <button class="secondary" onclick="clearBatch()">مسح</button>
+        <button class="secondary" onclick="loadBatchExample()">تحميل مثال</button>
+      </div>
+    </div>
+
+    <div id="batch_results" class="batch-result" style="display:none;">
+      <h3>📊 النتائج (<span id="batch_count">0</span> نقطة)</h3>
+      <div class="table-wrapper">
+        <table class="points-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Lon</th>
+              <th>Lat</th>
+              <th>ISR X</th>
+              <th>ISR Y</th>
+              <th>PAL X</th>
+              <th>PAL Y</th>
+            </tr>
+          </thead>
+          <tbody id="batch_body"></tbody>
+        </table>
+      </div>
+      <div class="buttons" style="margin-top:15px;">
+        <button class="success" onclick="addBatchToPoints()"> إضافة للقائمة الرئيسية</button>
+        <button onclick="exportBatchCSV()">📥 CSV</button>
+        <button onclick="exportBatchKML()">🌍 KML</button>
+        <button onclick="exportBatchGeoJSON()">🗺️ GeoJSON</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DMS -->
+  <div id="tab-dms" class="tab-content">
+    <div class="card">
+      <h3>📏 تحويل DMS ↔ Decimal</h3>
+      
+      <div class="dms-converter">
+        <h4>من Decimal إلى DMS (درجات/دقائق/ثواني):</h4>
+        <div class="dms-grid">
+          <div>
+            <label>Longitude (Decimal):</label>
+            <input type="text" id="dec_lon" placeholder="34.43689000">
+          </div>
+          <div>
+            <label>Latitude (Decimal):</label>
+            <input type="text" id="dec_lat" placeholder="31.51079400">
+          </div>
+        </div>
+        <div class="buttons">
+          <button onclick="decimalToDMS()">تحويل إلى DMS ➜</button>
+          <button class="copy-btn" onclick="copyDMSResult()" style="padding:10px 20px; font-size:14px;">📋 نسخ</button>
+        </div>
+        <div id="dms_result"></div>
+      </div>
+
+      <div class="dms-converter">
+        <h4>من DMS إلى Decimal:</h4>
+        <div class="dms-grid">
+          <div>
+            <label>Longitude (DMS):</label>
+            <div class="dms-input-group">
+              <input type="text" id="dms_lon_d" placeholder="34">°
+              <input type="text" id="dms_lon_m" placeholder="26">′
+              <input type="text" id="dms_lon_s" placeholder="12.80659">″
+              <select id="dms_lon_dir">
+                <option value="E">E</option>
+                <option value="W">W</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label>Latitude (DMS):</label>
+            <div class="dms-input-group">
+              <input type="text" id="dms_lat_d" placeholder="31">°
+              <input type="text" id="dms_lat_m" placeholder="30">′
+              <input type="text" id="dms_lat_s" placeholder="38.85880">″
+              <select id="dms_lat_dir">
+                <option value="N">N</option>
+                <option value="S">S</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="buttons">
+          <button onclick="dmsToDecimal()">تحويل إلى Decimal </button>
+          <button class="copy-btn" onclick="copyDecimalResult()" style="padding:10px 20px; font-size:14px;">📋 نسخ</button>
+        </div>
+        <div id="decimal_result"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- تصدير -->
+  <div id="tab-export" class="tab-content">
+    <div class="card">
+      <h3>📤 تصدير النقاط المحفوظة (<span id="export_count">0</span>)</h3>
+      <p style="color:var(--text-dark); margin-bottom:15px;">اختر صيغة التصدير المطلوبة:</p>
+      
+      <div class="export-grid">
+        <div class="export-card" onclick="exportPoints('csv')">
+          <h4> CSV</h4>
+          <p>Excel, Google Sheets</p>
+        </div>
+        <div class="export-card" onclick="exportPoints('kml')">
+          <h4> KML</h4>
+          <p>Google Earth</p>
+        </div>
+        <div class="export-card" onclick="exportPoints('geojson')">
+          <h4>️ GeoJSON</h4>
+          <p>QGIS, ArcGIS</p>
+        </div>
+        <div class="export-card" onclick="exportPoints('excel')">
+          <h4>📊 Excel</h4>
+          <p>XLSX Format</p>
+        </div>
+        <div class="export-card" onclick="exportPoints('pdf')">
+          <h4> PDF Report</h4>
+          <p>تقرير رسمي مع الشعار</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="map"></div>
+
+  <div class="points-section">
+    <h3>📋 النقاط المحفوظة (<span id="pointsCount">0</span>)</h3>
+    <div class="table-wrapper">
+      <table class="points-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Longitude</th>
+            <th>Latitude</th>
+            <th>ISR X</th>
+            <th>ISR Y</th>
+            <th>PAL X</th>
+            <th>PAL Y</th>
+            <th>حذف</th>
+          </tr>
+        </thead>
+        <tbody id="pointsBody"></tbody>
+      </table>
+    </div>
+    <div class="buttons" style="margin-top:15px;">
+      <button class="danger" onclick="clearPoints()">🗑️ مسح كل النقاط</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    <strong>وزارة الأشغال العامة والإسكان - دولة فلسطين</strong><br>
+    نظام تحويل الإحداثيات المساحية © 2026
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   دوال مساعدة
+   ========================================================= */
+function toEnglishDigits(str) {
+  str = str.replace(/[-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+  str = str.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  return str;
+}
+
+function formatNumber(num, decimals) {
+  return Number(num).toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+    useGrouping: false
+  });
+}
+
+function copyField(id) {
+  const el = document.getElementById(id);
+  el.select();
+  document.execCommand('copy');
+  showStatus('✅ تم النسخ إلى الحافظة');
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+/* =========================================================
+   أنظمة الإحداثيات
+   ========================================================= */
+proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs");
+
+proj4.defs("EPSG:28191",
+  "+proj=cass +lat_0=31.73409694444445 +lon_0=35.21208055555556 " +
+  "+x_0=170251.555 +y_0=126867.909 " +
+  "+a=6378300.789 +b=6356566.435 " +
+  "+towgs84=-275.722,94.7824,340.894,-8.001,-4.42,-11.821,1 " +
+  "+units=m +no_defs");
+
+const ISRAELI_OFFSET_X = 49998.2561;
+const ISRAELI_OFFSET_Y = 499999.7030;
+
+function palestineToIsraeli(palX, palY) {
+  return [palX + ISRAELI_OFFSET_X, palY + ISRAELI_OFFSET_Y];
+}
+
+function israeliToPalestine(isrX, isrY) {
+  return [isrX - ISRAELI_OFFSET_X, isrY - ISRAELI_OFFSET_Y];
+}
+
+/* =========================================================
+   إدارة النقاط
+   ========================================================= */
+let points = [];
+let markers = [];
+let batchResults = [];
+
+const map = L.map('map').setView([31.510794, 34.436890], 14);
+
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: '© Esri',
+  maxZoom: 19
+}).addTo(map);
+
+function showStatus(msg, isError = false) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = isError ? 'error' : 'success';
+  setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+function getVal(id) {
+  const raw = document.getElementById(id).value;
+  const cleaned = toEnglishDigits(raw).replace(/[^\d.\-eE]/g, '');
+  const v = parseFloat(cleaned);
+  return isNaN(v) ? null : v;
+}
+
+function setVal(id, v) {
+  document.getElementById(id).value = (v === null || isNaN(v)) ? '' : formatNumber(v, 3);
+}
+
+function setVal8(id, v) {
+  document.getElementById(id).value = (v === null || isNaN(v)) ? '' : formatNumber(v, 8);
+}
+
+function convertFrom(source) {
+  try {
+    if (source === 'wgs') {
+      const lon = getVal('wgs_lon');
+      const lat = getVal('wgs_lat');
+      if (lon === null || lat === null) { showStatus('⚠️ أدخل Lon و Lat', true); return; }
+      const [palX, palY] = proj4('EPSG:4326', 'EPSG:28191', [lon, lat]);
+      const [isrX, isrY] = palestineToIsraeli(palX, palY);
+      setVal('pal_x', palX); setVal('pal_y', palY);
+      setVal('isr_x', isrX); setVal('isr_y', isrY);
+    } else if (source === 'isr') {
+      const x = getVal('isr_x');
+      const y = getVal('isr_y');
+      if (x === null || y === null) { showStatus('⚠️ أدخل X و Y', true); return; }
+      const [palX, palY] = israeliToPalestine(x, y);
+      const [lon, lat] = proj4('EPSG:28191', 'EPSG:4326', [palX, palY]);
+      setVal('pal_x', palX); setVal('pal_y', palY);
+      setVal8('wgs_lon', lon); setVal8('wgs_lat', lat);
+    } else if (source === 'pal') {
+      const x = getVal('pal_x');
+      const y = getVal('pal_y');
+      if (x === null || y === null) { showStatus('⚠️ أدخل X و Y', true); return; }
+      const [lon, lat] = proj4('EPSG:28191', 'EPSG:4326', [x, y]);
+      const [isrX, isrY] = palestineToIsraeli(x, y);
+      setVal8('wgs_lon', lon); setVal8('wgs_lat', lat);
+      setVal('isr_x', isrX); setVal('isr_y', isrY);
+    }
+    showStatus('✅ تم التحويل بنجاح');
+  } catch (e) {
+    showStatus('❌ خطأ: ' + e.message, true);
+  }
+}
+
+function clearAll() {
+  ['wgs_lon','wgs_lat','isr_x','isr_y','pal_x','pal_y','point_name'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+
+function loadExample() {
+  document.getElementById('wgs_lon').value = '34.43689000';
+  document.getElementById('wgs_lat').value = '31.51079400';
+  document.getElementById('point_name').value = 'نقطة تجريبية';
+  convertFrom('wgs');
+}
+
+function addCurrentPoint() {
+  const lon = getVal('wgs_lon');
+  const lat = getVal('wgs_lat');
+  if (lon === null || lat === null) {
+    showStatus('️ حول الإحداثيات أولاً', true);
+    return;
+  }
+  const point = {
+    name: document.getElementById('point_name').value || `Point ${points.length + 1}`,
+    lon: lon, lat: lat,
+    isr_x: getVal('isr_x'), isr_y: getVal('isr_y'),
+    pal_x: getVal('pal_x'), pal_y: getVal('pal_y')
+  };
+  points.push(point);
+  renderPoints();
+  updateMap();
+  showStatus(`✅ تمت إضافة "${point.name}"`);
+}
+
+function deletePoint(idx) {
+  points.splice(idx, 1);
+  renderPoints();
+  updateMap();
+}
+
+function clearPoints() {
+  if (points.length === 0) return;
+  if (!confirm(`مسح كل النقاط (${points.length})؟`)) return;
+  points = [];
+  renderPoints();
+  updateMap();
+}
+
+function renderPoints() {
+  const tbody = document.getElementById('pointsBody');
+  document.getElementById('pointsCount').textContent = points.length;
+  document.getElementById('export_count').textContent = points.length;
+  
+  if (points.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="opacity:0.6; padding:20px;">لا توجد نقاط محفوظة</td></tr>';
+    return;
+  }
+  tbody.innerHTML = points.map((p, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${escapeHtml(p.name)}</td>
+      <td>${formatNumber(p.lon, 8)}</td>
+      <td>${formatNumber(p.lat, 8)}</td>
+      <td>${p.isr_x !== null ? formatNumber(p.isr_x, 3) : ''}</td>
+      <td>${p.isr_y !== null ? formatNumber(p.isr_y, 3) : ''}</td>
+      <td>${p.pal_x !== null ? formatNumber(p.pal_x, 3) : ''}</td>
+      <td>${p.pal_y !== null ? formatNumber(p.pal_y, 3) : ''}</td>
+      <td><button class="del-btn" onclick="deletePoint(${i})"></button></td>
+    </tr>
+  `).join('');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function updateMap() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  if (points.length === 0) return;
+
+  const bounds = L.latLngBounds();
+  points.forEach((p, i) => {
+    const marker = L.marker([p.lat, p.lon]).addTo(map);
+    marker.bindPopup(`
+      <div style="min-width:220px;">
+        <b style="font-size:14px; color:#2d5016;">${escapeHtml(p.name)}</b><br>
+        <hr style="margin:5px 0;">
+        <b>WGS84:</b><br>Lon: ${formatNumber(p.lon, 8)}<br>Lat: ${formatNumber(p.lat, 8)}<br>
+        <hr style="margin:5px 0;">
+        <b>Israeli:</b><br>X: ${formatNumber(p.isr_x, 3)}<br>Y: ${formatNumber(p.isr_y, 3)}<br>
+        <hr style="margin:5px 0;">
+        <b>Palestine 1923:</b><br>X: ${formatNumber(p.pal_x, 3)}<br>Y: ${formatNumber(p.pal_y, 3)}
+      </div>
+    `);
+    markers.push(marker);
+    bounds.extend([p.lat, p.lon]);
+  });
+
+  if (points.length > 1) map.fitBounds(bounds, { padding: [40, 40] });
+  else map.setView([points[0].lat, points[0].lon], 16);
+}
+
+/* =========================================================
+   DMS
+   ========================================================= */
+function decimalToDMS() {
+  const lon = parseFloat(toEnglishDigits(document.getElementById('dec_lon').value));
+  const lat = parseFloat(toEnglishDigits(document.getElementById('dec_lat').value));
+  
+  if (isNaN(lon) || isNaN(lat)) {
+    showStatus('⚠️ أدخل قيم صحيحة', true);
+    return;
+  }
+
+  const lonDMS = decimalToDMSValue(lon, 'E', 'W');
+  const latDMS = decimalToDMSValue(lat, 'N', 'S');
+
+  document.getElementById('dms_result').textContent = `Longitude: ${lonDMS}\nLatitude:  ${latDMS}`;
+  showStatus('✅ تم التحويل');
+}
+
+function decimalToDMSValue(decimal, posDir, negDir) {
+  const dir = decimal >= 0 ? posDir : negDir;
+  const abs = Math.abs(decimal);
+  const d = Math.floor(abs);
+  const mFloat = (abs - d) * 60;
+  const m = Math.floor(mFloat);
+  const s = (mFloat - m) * 60;
+  return `${d}°${m}'${formatNumber(s, 5)}"${dir}`;
+}
+
+function dmsToDecimal() {
+  const lonD = parseFloat(toEnglishDigits(document.getElementById('dms_lon_d').value));
+  const lonM = parseFloat(toEnglishDigits(document.getElementById('dms_lon_m').value));
+  const lonS = parseFloat(toEnglishDigits(document.getElementById('dms_lon_s').value));
+  const lonDir = document.getElementById('dms_lon_dir').value;
+
+  const latD = parseFloat(toEnglishDigits(document.getElementById('dms_lat_d').value));
+  const latM = parseFloat(toEnglishDigits(document.getElementById('dms_lat_m').value));
+  const latS = parseFloat(toEnglishDigits(document.getElementById('dms_lat_s').value));
+  const latDir = document.getElementById('dms_lat_dir').value;
+
+  if (isNaN(lonD) || isNaN(lonM) || isNaN(lonS) || isNaN(latD) || isNaN(latM) || isNaN(latS)) {
+    showStatus('⚠️ أدخل قيم صحيحة', true);
+    return;
+  }
+
+  let lon = lonD + lonM/60 + lonS/3600;
+  if (lonDir === 'W') lon = -lon;
+
+  let lat = latD + latM/60 + latS/3600;
+  if (latDir === 'S') lat = -lat;
+
+  document.getElementById('decimal_result').textContent = `Longitude: ${formatNumber(lon, 8)}\nLatitude:  ${formatNumber(lat, 8)}`;
+  showStatus('✅ تم التحويل');
+}
+
+function copyDMSResult() {
+  const text = document.getElementById('dms_result').textContent;
+  if (!text) { showStatus('⚠️ لا توجد نتيجة', true); return; }
+  navigator.clipboard.writeText(text);
+  showStatus('✅ تم النسخ');
+}
+
+function copyDecimalResult() {
+  const text = document.getElementById('decimal_result').textContent;
+  if (!text) { showStatus('⚠️ لا توجد نتيجة', true); return; }
+  navigator.clipboard.writeText(text);
+  showStatus('✅ تم النسخ');
+}
+
+/* =========================================================
+   Batch
+   ========================================================= */
+function batchConvert() {
+  const input = document.getElementById('batch_input').value.trim();
+  const source = document.getElementById('batch_source').value;
+  
+  if (!input) { showStatus('⚠️ أدخل الإحداثيات', true); return; }
+
+  const lines = input.split('\n').filter(l => l.trim());
+  batchResults = [];
+  let errors = 0;
+
+  lines.forEach((line, idx) => {
+    try {
+      const parts = line.split(/[,\s]+/).filter(p => p);
+      if (parts.length < 2) throw new Error('بيانات غير كافية');
+
+      const v1 = parseFloat(toEnglishDigits(parts[0]));
+      const v2 = parseFloat(toEnglishDigits(parts[1]));
+
+      let lon, lat, isrX, isrY, palX, palY;
+
+      if (source === 'wgs') {
+        lon = v1; lat = v2;
+        [palX, palY] = proj4('EPSG:4326', 'EPSG:28191', [lon, lat]);
+        [isrX, isrY] = palestineToIsraeli(palX, palY);
+      } else if (source === 'isr') {
+        isrX = v1; isrY = v2;
+        [palX, palY] = israeliToPalestine(isrX, isrY);
+        [lon, lat] = proj4('EPSG:28191', 'EPSG:4326', [palX, palY]);
+      } else {
+        palX = v1; palY = v2;
+        [lon, lat] = proj4('EPSG:28191', 'EPSG:4326', [palX, palY]);
+        [isrX, isrY] = palestineToIsraeli(palX, palY);
+      }
+
+      batchResults.push({ lon, lat, isrX, isrY, palX, palY });
+    } catch (e) {
+      errors++;
+    }
+  });
+
+  renderBatchResults();
+  showStatus(`✅ تم تحويل ${batchResults.length} نقطة${errors > 0 ? ` (أخطاء: ${errors})` : ''}`);
+}
+
+function renderBatchResults() {
+  const tbody = document.getElementById('batch_body');
+  document.getElementById('batch_count').textContent = batchResults.length;
+  document.getElementById('batch_results').style.display = batchResults.length ? 'block' : 'none';
+
+  if (!batchResults.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;">لا توجد نتائج</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = batchResults.map((p, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${formatNumber(p.lon, 8)}</td>
+      <td>${formatNumber(p.lat, 8)}</td>
+      <td>${formatNumber(p.isrX, 3)}</td>
+      <td>${formatNumber(p.isrY, 3)}</td>
+      <td>${formatNumber(p.palX, 3)}</td>
+      <td>${formatNumber(p.palY, 3)}</td>
+    </tr>
+  `).join('');
+}
+
+function clearBatch() {
+  document.getElementById('batch_input').value = '';
+  batchResults = [];
+  renderBatchResults();
+}
+
+function loadBatchExample() {
+  document.getElementById('batch_input').value = 
+    '34.43689000,31.51079400\n' +
+    '34.43819400,31.50210200\n' +
+    '34.43381000,31.52331800';
+}
+
+function addBatchToPoints() {
+  if (!batchResults.length) { showStatus('⚠️ لا توجد نتائج', true); return; }
+  
+  batchResults.forEach((p, i) => {
+    points.push({
+      name: `Batch Point ${points.length + 1}`,
+      lon: p.lon, lat: p.lat,
+      isr_x: p.isrX, isr_y: p.isrY,
+      pal_x: p.palX, pal_y: p.palY
+    });
+  });
+  
+  renderPoints();
+  updateMap();
+  showStatus(`✅ تمت إضافة ${batchResults.length} نقطة`);
+}
+
+/* =========================================================
+   التصدير
+   ========================================================= */
+function exportPoints(format) {
+  if (!points.length) { showStatus('⚠️ لا توجد نقاط', true); return; }
+
+  switch(format) {
+    case 'csv': exportCSV(); break;
+    case 'kml': exportKML(); break;
+    case 'geojson': exportGeoJSON(); break;
+    case 'excel': exportExcel(); break;
+    case 'pdf': exportPDF(); break;
+  }
+}
+
+function exportCSV() {
+  const headers = ['name','lon','lat','isr_x','isr_y','pal_x','pal_y'];
+  const rows = [headers.join(',')];
+  points.forEach(p => {
+    rows.push([
+      `"${(p.name||'').replace(/"/g,'""')}"`,
+      formatNumber(p.lon,8), formatNumber(p.lat,8),
+      formatNumber(p.isr_x,3), formatNumber(p.isr_y,3),
+      formatNumber(p.pal_x,3), formatNumber(p.pal_y,3)
+    ].join(','));
+  });
+  downloadFile(rows.join('\n'), 'points.csv', 'text/csv');
+  showStatus('✅ تم تصدير CSV');
+}
+
+function exportKML() {
+  let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<name>Ministry of Public Works - Points</name>
+<description>Coordinate Conversion Report - State of Palestine</description>
+`;
+
+  points.forEach(p => {
+    kml += `
+<Placemark>
+  <name>${escapeXml(p.name)}</name>
+  <description>
+    <![CDATA[
+    <b>WGS84:</b> ${formatNumber(p.lon,8)}, ${formatNumber(p.lat,8)}<br>
+    <b>Israeli:</b> ${formatNumber(p.isr_x,3)}, ${formatNumber(p.isr_y,3)}<br>
+    <b>Palestine 1923:</b> ${formatNumber(p.pal_x,3)}, ${formatNumber(p.pal_y,3)}
+    ]]>
+  </description>
+  <Point><coordinates>${p.lon},${p.lat}</coordinates></Point>
+</Placemark>`;
+  });
+
+  kml += '\n</Document>\n</kml>';
+  downloadFile(kml, 'points.kml', 'application/vnd.google-earth.kml+xml');
+  showStatus('✅ تم تصدير KML');
+}
+
+function exportGeoJSON() {
+  const geojson = {
+    type: "FeatureCollection",
+    features: points.map(p => ({
+      type: "Feature",
+      properties: {
+        name: p.name,
+        longitude: p.lon,
+        latitude: p.lat,
+        israeli_x: p.isr_x,
+        israeli_y: p.isr_y,
+        palestine_x: p.pal_x,
+        palestine_y: p.pal_y
+      },
+      geometry: { type: "Point", coordinates: [p.lon, p.lat] }
+    }))
+  };
+
+  downloadFile(JSON.stringify(geojson, null, 2), 'points.geojson', 'application/geo+json');
+  showStatus('✅ تم تصدير GeoJSON');
+}
+
+function exportExcel() {
+  const data = points.map(p => ({
+    Name: p.name,
+    Longitude: p.lon,
+    Latitude: p.lat,
+    Israeli_X: p.isr_x,
+    Israeli_Y: p.isr_y,
+    Palestine_X: p.pal_x,
+    Palestine_Y: p.pal_y
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Points");
+  XLSX.writeFile(wb, 'points.xlsx');
+  showStatus('✅ تم تصدير Excel');
+}
+
+function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('landscape');
+
+  // ترويسة
+  doc.setFillColor(45, 80, 22);
+  doc.rect(0, 0, 297, 35, 'F');
+  
+  doc.setTextColor(201, 169, 97);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Ministry of Public Works & Housing', 148, 15, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text('State of Palestine - Palestinian National Authority', 148, 23, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text('Coordinate Conversion Report', 148, 30, { align: 'center' });
+
+  // معلومات
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Date: ${new Date().toLocaleDateString('en-US')}`, 14, 45);
+  doc.text(`Total Points: ${points.length}`, 14, 52);
+  doc.text(`Systems: WGS84 | Israeli Grid | Palestine 1923 (EPSG:28191)`, 14, 59);
+
+  // جدول
+  const tableData = points.map((p, i) => [
+    i + 1,
+    p.name,
+    formatNumber(p.lon, 8),
+    formatNumber(p.lat, 8),
+    formatNumber(p.isr_x, 3),
+    formatNumber(p.isr_y, 3),
+    formatNumber(p.pal_x, 3),
+    formatNumber(p.pal_y, 3)
+  ]);
+
+  doc.autoTable({
+    head: [['#', 'Name', 'Longitude', 'Latitude', 'ISR X', 'ISR Y', 'PAL X', 'PAL Y']],
+    body: tableData,
+    startY: 65,
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
+    headStyles: { fillColor: [45, 80, 22], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245, 241, 232] }
+  });
+
+  // تذييل
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(`Page ${i} of ${pageCount} - Ministry of Public Works & Housing - State of Palestine`, 148, 200, { align: 'center' });
+  }
+
+  doc.save('coordinate_report.pdf');
+  showStatus('✅ تم تصدير PDF');
+}
+
+function exportBatchCSV() {
+  if (!batchResults.length) return;
+  const headers = ['lon','lat','isr_x','isr_y','pal_x','pal_y'];
+  const rows = [headers.join(',')];
+  batchResults.forEach(p => {
+    rows.push([
+      formatNumber(p.lon,8), formatNumber(p.lat,8),
+      formatNumber(p.isrX,3), formatNumber(p.isrY,3),
+      formatNumber(p.palX,3), formatNumber(p.palY,3)
+    ].join(','));
+  });
+  downloadFile(rows.join('\n'), 'batch_points.csv', 'text/csv');
+}
+
+function exportBatchKML() {
+  if (!batchResults.length) return;
+  let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Batch Points</name>`;
+  batchResults.forEach((p, i) => {
+    kml += `<Placemark><name>Point ${i+1}</name><Point><coordinates>${p.lon},${p.lat}</coordinates></Point></Placemark>`;
+  });
+  kml += '</Document></kml>';
+  downloadFile(kml, 'batch_points.kml', 'application/vnd.google-earth.kml+xml');
+}
+
+function exportBatchGeoJSON() {
+  if (!batchResults.length) return;
+  const geojson = {
+    type: "FeatureCollection",
+    features: batchResults.map((p, i) => ({
+      type: "Feature",
+      properties: { id: i+1 },
+      geometry: { type: "Point", coordinates: [p.lon, p.lat] }
+    }))
+  };
+  downloadFile(JSON.stringify(geojson, null, 2), 'batch_points.geojson', 'application/geo+json');
+}
+
+function escapeXml(s) {
+  return String(s).replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[c]));
+}
+
+function downloadFile(content, filename, type) {
+  const blob = new Blob(['\uFEFF' + content], { type: type + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+renderPoints();
+</script>
+</body>
+</html>
